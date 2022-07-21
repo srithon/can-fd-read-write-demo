@@ -34,7 +34,7 @@
  * @param s The id returned by the `socket` syscall corresponding to the socket
  * to read from.
  */
-void read_from_socket(int);
+void read_from_socket(int s);
 /**
  * @brief Writes a CAN-FD frame to a given socket.
  *
@@ -42,7 +42,7 @@ void read_from_socket(int);
  * to read from.
  * @param frame The frame to write to the socket.
  */
-void write_to_socket(int, struct canfd_frame);
+void write_to_socket(int s, struct canfd_frame frame);
 /**
  * @brief Uses STDIN to interactively prompt the user to create a CAN-FD frame,
  * and then sends the frame to the given socket. The payload of the frame will
@@ -51,7 +51,7 @@ void write_to_socket(int, struct canfd_frame);
  * @param s The id returned by the `socket` syscall corresponding to the socket
  * to write to.
  */
-void write_to_socket_interactive(int);
+void write_to_socket_interactive(int s);
 
 // a SocketFunc is a function that takes in an integer (designating the socket
 // )and returns void.
