@@ -1,0 +1,19 @@
+See this [[https://blog.mbedded.ninja/programming/operating-systems/linux/how-to-use-socketcan-with-the-command-line-in-linux/][article]] for how to do setup.
+
+We need to create a network device like this:
+#+begin_src sh
+# first, load the vcan module
+sudo modprobe vcan
+# then, create the virtual link device
+sudo ip link add dev vcan0 type vcan
+# then, set its state to UP
+sudo ip link set vcan0 up
+#+end_src
+
+Just to debug, you can run ~candump vcan0~ in one terminal and run ~cansend vcan0 <data>~ in the other.
+The data from ~cansend~ should reflect in the ~candump~ output.
+
+After that, run the ~reader~ in one process and the ~writer~ in the other.
+The default frame filter only matches CAN ID ~5~.
+You can override this by passing in the preprocessor parameter ~CAN_FILTER_ID=<id>~.
+You can disable the filter altogether by passing the parameter ~DISABLE_CAN_FILTER~.
