@@ -106,20 +106,26 @@ void write_to_socket_interactive(int s) {
 
   int data_length;
 
+  int flags;
+
   // ask for CAN ID
   // 32 bits
   printf("Please enter a CAN ID (number from 0 to 999): ");
   fflush(stdout);
   scanf("%d", &frame.can_id);
 
-  // 8 bits
-  printf("Please enter CAN flags (number from 0-15): ");
-  fflush(stdout);
-  // MISTAKE: the %d modifier doesn't consume trailing whitespace, so %c was
-  // consuming the newline character.
-  // https://stackoverflow.com/questions/14484431/scanf-getting-skipped.
-  // putting the leading space makes it skip whitespace first.
-  scanf(" %c", &frame.flags);
+  do {
+    // 8 bits
+    printf("Please enter CAN flags (number from 0-15): ");
+    fflush(stdout);
+    // MISTAKE: the %d modifier doesn't consume trailing whitespace, so %c was
+    // consuming the newline character.
+    // https://stackoverflow.com/questions/14484431/scanf-getting-skipped.
+    // putting the leading space makes it skip whitespace first.
+    scanf(" %d", &flags);
+  } while (flags < 0 || flags > 15);
+
+  frame.flags = flags;
 
   // get rid of the newline thats still in the buffer after the previous scanf.
   // https://stackoverflow.com/questions/5240789/scanf-leaves-the-newline-character-in-the-buffer
