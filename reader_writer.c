@@ -22,7 +22,9 @@
 
 #include <assert.h>
 
+#if !defined(CAN_INTERFACE_NAME)
 #define CAN_INTERFACE_NAME "vcan0"
+#endif
 
 #if !defined(CAN_FILTER_ID)
 #define CAN_FILTER_ID 5
