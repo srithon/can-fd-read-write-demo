@@ -20,7 +20,13 @@
 // for general user interaction
 #include <stdio.h>
 
+#include <assert.h>
+
 #define CAN_INTERFACE_NAME "vcan0"
+
+#if !defined(CAN_FILTER_ID)
+#define CAN_FILTER_ID 5
+#endif
 
 // if neither are specified, then default to `RUN_READER`
 #if !defined(RUN_READER) && !defined(RUN_WRITER)
@@ -141,8 +147,17 @@ int main() {
   // open socket communicating using the raw socket protocol
   s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
   // https://stackoverflow.com/questions/61368853/socketcan-read-function-never-returns
-  setsockopt(s, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_enabled,
-             sizeof(canfd_enabled));
+  assert(setsockopt(s, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_enabled,
+                    sizeof(canfd_enabled)) >= 0);
+
+  // can set several filters and they will be OR'd by default; there is a
+  // sockopt defined alongside CAN_RAW_FILTER that allows you to AND them.
+  struct can_filter rfilter[1];
+  rfilter[0].can_id = CAN_FILTER_ID;
+  rfilter[0].can_mask = CAN_SFF_MASK;
+  // returns -1 when socket doesn't support the operation
+  assert(setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, &rfilter,
+                    sizeof(rfilter)) >= 0);
 
   // we copy the name of our device into the struct.
   // note that `ifr_name` is actually a macro that hides the internal structure
