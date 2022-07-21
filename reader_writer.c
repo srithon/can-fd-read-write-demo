@@ -41,9 +41,8 @@ void read_from_socket(int s);
  * @param s The id returned by the `socket` syscall corresponding to the socket
  * to read from.
  * @param frame The frame to write to the socket.
- * @param data_length The length of the data field in the frame.
  */
-void write_to_socket(int s, struct canfd_frame frame, int data_length);
+void write_to_socket(int s, struct canfd_frame frame);
 /**
  * @brief Uses STDIN to interactively prompt the user to create a CAN-FD frame,
  * and then sends the frame to the given socket. The payload of the frame will
@@ -73,29 +72,23 @@ void read_from_socket(int s) {
     perror("CAN FD Raw socket read");
   }
 
-  // if (nbytes < sizeof(frame)) {
-  //   perror("read: Incomplete CAN FD frame");
-  // }
+  if (nbytes < sizeof(frame)) {
+    perror("read: Incomplete CAN FD frame");
+  }
 
   printf("CAN ID: %d\n", frame.can_id);
   printf("data length: %d\n", frame.len);
   printf("Received frame data: %s\n", frame.data);
 }
 
-void write_to_socket(int s, struct canfd_frame frame, int data_length) {
-  // 4: can_id
-  // 1: data length field
-  // 1: CAN FD flags
-  // 2: 2 bytes of reserved padding
-  // data_length: the remaining length
-  int total_frame_size = 4 + 1 + 1 + 2 + data_length + 1;
-  int nbytes = write(s, &frame, total_frame_size);
+void write_to_socket(int s, struct canfd_frame frame) {
+  int nbytes = write(s, &frame, sizeof(frame));
 
   if (nbytes < 0) {
     perror("CAN FD Raw socket write");
   }
 
-  if (nbytes < sizeof(total_frame_size)) {
+  if (nbytes < sizeof(frame)) {
     perror("write: Incomplete CAN FD frame");
   }
 }
@@ -134,7 +127,7 @@ void write_to_socket_interactive(int s) {
   data_length = strlen(frame.data);
   frame.len = data_length;
 
-  write_to_socket(s, frame, data_length);
+  write_to_socket(s, frame);
 }
 
 int main() {
