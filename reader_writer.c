@@ -152,6 +152,7 @@ int main() {
   assert(setsockopt(s, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_enabled,
                     sizeof(canfd_enabled)) >= 0);
 
+#if !defined(DISABLE_CAN_FILTER)
   // can set several filters and they will be OR'd by default; there is a
   // sockopt defined alongside CAN_RAW_FILTER that allows you to AND them.
   struct can_filter rfilter[1];
@@ -160,6 +161,7 @@ int main() {
   // returns -1 when socket doesn't support the operation
   assert(setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, &rfilter,
                     sizeof(rfilter)) >= 0);
+#endif
 
   // we copy the name of our device into the struct.
   // note that `ifr_name` is actually a macro that hides the internal structure
