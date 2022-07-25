@@ -22,12 +22,15 @@
 
 #include <assert.h>
 
-#if !defined(CAN_INTERFACE_NAME)
-#define CAN_INTERFACE_NAME "vcan0"
+// for `getenv`
+#include <stdlib.h>
+
+#if !defined(DEFAULT_CAN_INTERFACE_NAME)
+#define DEFAULT_CAN_INTERFACE_NAME "vcan0"
 #endif
 
-#if !defined(CAN_FILTER_ID)
-#define CAN_FILTER_ID 5
+#if !defined(DEFAULT_CAN_FILTER_ID)
+#define DEFAULT_CAN_FILTER_ID 5
 #endif
 
 // if neither are specified, then default to `RUN_READER`
@@ -144,6 +147,64 @@ void write_to_socket_interactive(int s) {
   write_to_socket(s, frame);
 }
 
+/**
+ * @brief Reads environment variables `DISABLE_CAN_FILTER` and `CAN_FILTER_ID`
+ * to determine the CAN filter id and whether to use it at all.
+ *
+ * @return If the filter should be disabled, -1; otherwise the id to read for.
+ */
+int get_can_filter_id() {
+  char *can_filter_id_env;
+  char *disable_can_filter_env;
+
+  int can_filter_id;
+
+  char *strtol_end_ptr;
+
+  disable_can_filter_env = getenv("DISABLE_CAN_FILTER");
+
+  // if it has any value, then disable the filter
+  if (disable_can_filter_env) {
+    can_filter_id = -1;
+  } else {
+    can_filter_id_env = getenv("CAN_FILTER_ID");
+
+    // read string `can_filter_id_env`, store pointer to last read character in
+    // `strtol_end_ptr` and interpret number as base 10.
+    can_filter_id = strtol(can_filter_id_env, &strtol_end_ptr, 10);
+
+    // if end pointer is same as start pointer, nothing was read, meaning the
+    // string was not a valid integer
+    if (strtol_end_ptr == can_filter_id_env) {
+      // sanity check; in this case, the documentation says that the function
+      // should return zero.
+      assert(can_filter_id == 0);
+      // then, default to `DEFAULT_CAN_FILTER_ID`.
+      can_filter_id = DEFAULT_CAN_FILTER_ID;
+    }
+  }
+
+  return can_filter_id;
+}
+
+/**
+ * @brief Reads environment variable `CAN_INTERFACE_NAME` or defaults to PP
+ * definition to yield interface to read.
+ *
+ * @return Name of CAN interface device.
+ */
+char *get_can_interface_name() {
+  char *env_val = getenv("CAN_INTERFACE_NAME");
+  char *interface_name;
+
+  // if env variable isn't defined, default
+  if (!(interface_name = env_val)) {
+    interface_name = DEFAULT_CAN_INTERFACE_NAME;
+  }
+
+  return interface_name;
+}
+
 int main() {
   // pre-declaration for C90 compatibility
   int s;
@@ -152,27 +213,34 @@ int main() {
   // structure for requesting a specific interface
   struct ifreq ifr;
 
+  int can_filter_id;
+  char *can_interface_name;
+
   // open socket communicating using the raw socket protocol
   s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
   // https://stackoverflow.com/questions/61368853/socketcan-read-function-never-returns
   assert(setsockopt(s, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_enabled,
                     sizeof(canfd_enabled)) >= 0);
 
-#if !defined(DISABLE_CAN_FILTER)
-  // can set several filters and they will be OR'd by default; there is a
-  // sockopt defined alongside CAN_RAW_FILTER that allows you to AND them.
-  struct can_filter rfilter[1];
-  rfilter[0].can_id = CAN_FILTER_ID;
-  rfilter[0].can_mask = CAN_SFF_MASK;
-  // returns -1 when socket doesn't support the operation
-  assert(setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, &rfilter,
-                    sizeof(rfilter)) >= 0);
-#endif
+  can_filter_id = get_can_filter_id();
+
+  if (can_filter_id != -1) {
+    // can set several filters and they will be OR'd by default; there is a
+    // sockopt defined alongside CAN_RAW_FILTER that allows you to AND them.
+    struct can_filter rfilter[1];
+    rfilter[0].can_id = can_filter_id;
+    rfilter[0].can_mask = CAN_SFF_MASK;
+    // returns -1 when socket doesn't support the operation
+    assert(setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, &rfilter,
+                      sizeof(rfilter)) >= 0);
+  }
+
+  can_interface_name = get_can_interface_name();
 
   // we copy the name of our device into the struct.
   // note that `ifr_name` is actually a macro that hides the internal structure
   // of the `ifreq`
-  strcpy(ifr.ifr_name, CAN_INTERFACE_NAME);
+  strcpy(ifr.ifr_name, can_interface_name);
 
   // SIOCGIFINDEX; from docs: "name -> if_index mapping"
   ioctl(s, SIOCGIFINDEX, &ifr);
